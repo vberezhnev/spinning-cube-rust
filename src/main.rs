@@ -39,8 +39,9 @@ fn calculateZ(i: f32, j: f32, k: f32) -> f32 {
 fn calculateForSurface(cubeX: f32, cubeY: f32, cubeZ: f32, ch: f32) {
     let width: f32 = 160.0;
     let height: f32 = 44.0;
-    let mut zBuffer: [i32; 160 * 44];
-    let mut buffer: [i32; 160 * 44];
+
+    let mut zBuffer: [usize; 160 * 44];
+    let mut buffer: [usize; 160 * 44];
     let K1: f32 = 40.0;
 
     let distanceFromCam: f32 = 100.0;
@@ -55,11 +56,11 @@ fn calculateForSurface(cubeX: f32, cubeY: f32, cubeZ: f32, ch: f32) {
     let xp: f32 = width / 2.0 + horizontalOffset + K1 * ooz * x * 2.0;
     let yp: f32 = height / 2.0 + K1 * ooz * y;
 
-    let idx: f32 = xp + yp * width;
+    let idx = xp + yp * width;
     if idx >= 0.0 && idx < width * height {
-        if ooz > zBuffer[idx] {
-            zBuffer[idx] = ooz;
-            buffer[idx] = ch;
+        if ooz > zBuffer[idx] as f32 {
+            zBuffer[idx] = ooz as usize;
+            buffer[idx] = ch as usize;
         }
     }
 }
