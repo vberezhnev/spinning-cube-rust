@@ -1,14 +1,13 @@
-//! A spinning text cube
-//! 
-//! 
-//! 4    +------+  6
-//!     /|     /| 
-//! 5  +------+ |  7
-//!    | |    | | 
-//! 0  | +----|-+  2
-//!    |/     |/   
-//! 1  +------+    3
-
+/*! A spinning text cube
+ 
+ 4    +-------+  6
+     /|      /| 
+ 5  +-------+ |  7
+    | |     | | 
+ 0  | +-----|-+  2
+    |/      |/   
+ 1  +-------+    3
+!*/
 
 #[derive(Debug, Clone, Copy)]
 struct Matrix([[f32; 4]; 4]);
@@ -16,7 +15,7 @@ struct Matrix([[f32; 4]; 4]);
 #[derive(Debug, Clone, Copy)]
 struct Vector([f32; 4]);
 
-const VERTICES : [Vector; 8] = [
+const VERTICES: [Vector; 8] = [
     Vector([-1.0, -1.0, -1.0, 1.0]),
     Vector([-1.0, -1.0,  1.0, 1.0]),
     Vector([ 1.0, -1.0, -1.0, 1.0]),
@@ -27,7 +26,7 @@ const VERTICES : [Vector; 8] = [
     Vector([ 1.0,  1.0,  1.0, 1.0]),
 ];
 
-const FACES : [[u8; 4]; 6] = [
+const FACES: [[u8; 4]; 6] = [
     [1, 5, 7, 3],
     [3, 7, 6, 2],
     [0, 4, 5, 1],
@@ -39,7 +38,7 @@ const FACES : [[u8; 4]; 6] = [
 fn matrix_times_vector(m: &Matrix, v: &Vector) -> Vector {
     let [mx, my, mz, mw] = &m.0;
     let [x, y, z, w] = v.0;
-    // The product is the weighted sum of the columns.
+    // Продукт - взвешенная сумма столбцов.
     Vector([
         x * mx[0] + y * my[0] + z * mz[0] + w * mw[0],
         x * mx[1] + y * my[1] + z * mz[1] + w * mw[1],
@@ -57,7 +56,7 @@ const SCALE_X: f32 = SCREEN_WIDTH as f32 * 0.5;
 const SCALE_Y: f32 = SCREEN_HEIGHT as f32 * 0.5;
 
 fn main() {
-    for frame_number in 0.. {
+		for frame_number in 0.. {
 				// Переменная, отвечающая за пространство в самом кубе и вокруг него.
         let mut frame = [[b' ';SCREEN_WIDTH]; SCREEN_HEIGHT];
 
@@ -65,8 +64,8 @@ fn main() {
         let (c, s) = (t.cos(), t.sin());
 
         let cube_to_world = Matrix([
-            // Each row is a column of a matrix.
-            [  c, 0.0,   s, 0.0],
+            // Каждая строка является столбцом матрицы.
+            [ c, 0.0,   s, 0.0],
             [0.0, 1.0, 0.0, 0.0],
             [ -s, 0.0,   c, 0.0],
             [0.0, 0.0,-2.5, 1.0],
@@ -93,6 +92,7 @@ fn main() {
             }
         }
 
+				// Выстраивание строк в соответствии с высотой (заданной константой)
         for l in 0..SCREEN_HEIGHT {
             let row = std::str::from_utf8(&frame[l]).unwrap();
             println!("{}", row);
@@ -100,7 +100,8 @@ fn main() {
 
         print!("\x1b[{}A", SCREEN_HEIGHT);
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
+				// Скорость вращения куба
+        std::thread::sleep(std::time::Duration::from_millis(5));
     }
 }
 
@@ -109,7 +110,6 @@ fn cull(p0: [f32; 2], p1: [f32; 2], p2: [f32; 2]) -> bool {
     let dy = [p1[1] - p0[1], p2[1] - p1[1]];
     dx[0] * dy[1] > dx[1] * dy[0]
 }
-
 
 fn draw_line(frame: &mut [[u8; SCREEN_WIDTH]; SCREEN_HEIGHT], start: [f32; 2], end: [f32; 2]) {
     let [x0, y0] = start;
