@@ -1,70 +1,139 @@
-static mut A: f32 = 0.0;
-static mut B: f32 = 0.0;
-static mut C: f32 = 0.0;
+//! A spinning text cube
+//! 
+//! 
+//! 4    +------+  6
+//!     /|     /| 
+//! 5  +------+ |  7
+//!    | |    | | 
+//! 0  | +----|-+  2
+//!    |/     |/   
+//! 1  +------+    3
 
-// static mut width: i32 = 160;
-// static mut height: i32 = 44;
-// static mut backgroundASCIICode: char = '.';
-// static mut horizontalOffset: f32;
-// static mut K1: i32 = 40;
 
-// static mut incrementSpeed: f32 = 0.6;
+#[derive(Debug, Clone, Copy)]
+struct Matrix([[f32; 4]; 4]);
 
-// static mut x: f32;
-// static mut y: f32;
-// static mut z: f32;
+#[derive(Debug, Clone, Copy)]
+struct Vector([f32; 4]);
 
-// static mut ooz: f32;
-// static mut xp: int32;
-// static mut yp: int32;
-// static mut idx: int32;
+const VERTICES : [Vector; 8] = [
+    Vector([-1.0, -1.0, -1.0, 1.0]),
+    Vector([-1.0, -1.0,  1.0, 1.0]),
+    Vector([ 1.0, -1.0, -1.0, 1.0]),
+    Vector([ 1.0, -1.0,  1.0, 1.0]),
+    Vector([-1.0,  1.0, -1.0, 1.0]),
+    Vector([-1.0,  1.0,  1.0, 1.0]),
+    Vector([ 1.0,  1.0, -1.0, 1.0]),
+    Vector([ 1.0,  1.0,  1.0, 1.0]),
+];
 
-fn calculateX(i: f32, j: f32, k: f32) -> f32 {
-    return j * A.sin() * B.sin() * C.cos() - k * A.cos() * B.sin() * C.cos()
-        + j * A.cos() * C.sin()
-        + k * A.sin() * C.sin()
-        + i * B.sin() * C.cos();
+const FACES : [[u8; 4]; 6] = [
+    [1, 5, 7, 3],
+    [3, 7, 6, 2],
+    [0, 4, 5, 1],
+    [2, 6, 4, 0],
+    [0, 1, 3, 2],
+    [5, 4, 6, 7],
+];
+
+fn matrix_times_vector(m: &Matrix, v: &Vector) -> Vector {
+    let [mx, my, mz, mw] = &m.0;
+    let [x, y, z, w] = v.0;
+    // The product is the weighted sum of the columns.
+    Vector([
+        x * mx[0] + y * my[0] + z * mz[0] + w * mw[0],
+        x * mx[1] + y * my[1] + z * mz[1] + w * mw[1],
+        x * mx[2] + y * my[2] + z * mz[2] + w * mw[2],
+        x * mx[3] + y * my[3] + z * mz[3] + w * mw[3],
+    ])
 }
 
-fn calculateY(i: f32, j: f32, k: f32) -> f32 {
-    return i * A.cos() * C.cos() + k * A.sin() * C.cos() - j * A.sin() * B.sin() * C.sin()
-        + k * A.cos() * B.sin() * C.sin()
-        - i * B.cos() * C.sin();
-}
+// Задаём глобальные переменные
+const SCREEN_WIDTH: usize = 40;
+const SCREEN_HEIGHT: usize = 20;
+const OFFSET_X: f32 = SCREEN_WIDTH as f32 * 0.5;
+const OFFSET_Y: f32 = SCREEN_HEIGHT as f32 * 0.5;
+const SCALE_X: f32 = SCREEN_WIDTH as f32 * 0.5;
+const SCALE_Y: f32 = SCREEN_HEIGHT as f32 * 0.5;
 
-fn calculateZ(i: f32, j: f32, k: f32) -> f32 {
-    return k * A.cos() * B.cos() - j * A.sin() * B.cos() + i * B.sin();
-}
+fn main() {
+    for frame_number in 0.. {
+				// Переменная, отвечающая за пространство в самом кубе и вокруг него.
+        let mut frame = [[b' ';SCREEN_WIDTH]; SCREEN_HEIGHT];
 
-fn calculateForSurface(cubeX: f32, cubeY: f32, cubeZ: f32, ch: f32) {
-    let width: f32 = 160.0;
-    let height: f32 = 44.0;
+        let t = frame_number as f32 * 0.01;
+        let (c, s) = (t.cos(), t.sin());
 
-    let mut zBuffer: [usize; 160 * 44];
-    let mut buffer: [usize; 160 * 44];
-    let K1: f32 = 40.0;
+        let cube_to_world = Matrix([
+            // Each row is a column of a matrix.
+            [  c, 0.0,   s, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [ -s, 0.0,   c, 0.0],
+            [0.0, 0.0,-2.5, 1.0],
+        ]);
 
-    let distanceFromCam: f32 = 100.0;
-    let horizontalOffset;
 
-    let x: f32 = calculateX(cubeX, cubeY, cubeZ);
-    let y: f32 = calculateY(cubeX, cubeY, cubeZ);
-    let z: f32 = calculateZ(cubeX, cubeY, cubeZ) + distanceFromCam;
-
-    let ooz: f32 = 1.0 / z;
-
-    let xp: f32 = width / 2.0 + horizontalOffset + K1 * ooz * x * 2.0;
-    let yp: f32 = height / 2.0 + K1 * ooz * y;
-
-    let idx = xp + yp * width;
-    if idx >= 0.0 && idx < width * height {
-        if ooz > zBuffer[idx] as f32 {
-            zBuffer[idx] = ooz as usize;
-            buffer[idx] = ch as usize;
+        let mut screen_pos = [[0.0, 0.0]; 8];
+        for (v, s) in VERTICES.iter().zip(screen_pos.iter_mut()) {
+            let world_pos = matrix_times_vector(&cube_to_world, v);
+            let recip_z = 1.0 /  world_pos.0[2];
+            let screen_x = world_pos.0[0] * recip_z * SCALE_X + OFFSET_X;
+            let screen_y = world_pos.0[1] * recip_z * SCALE_Y + OFFSET_Y;
+            *s = [screen_x, screen_y];
+            //frame[screen_y as usize][screen_x as usize] = b'.';
         }
+
+        for face in FACES {
+            if !cull(screen_pos[face[0] as usize], screen_pos[face[1] as usize], screen_pos[face[2] as usize]) {
+                let mut end = face[3];
+                for start in face {
+                    draw_line(&mut frame, screen_pos[start as usize], screen_pos[end as usize]);
+                    end = start;
+                }
+            }
+        }
+
+        for l in 0..SCREEN_HEIGHT {
+            let row = std::str::from_utf8(&frame[l]).unwrap();
+            println!("{}", row);
+        }
+
+        print!("\x1b[{}A", SCREEN_HEIGHT);
+
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
 }
 
-fn main() {
-    println!("по идее все ок");
+fn cull(p0: [f32; 2], p1: [f32; 2], p2: [f32; 2]) -> bool {
+    let dx = [p1[0] - p0[0], p2[0] - p1[0]];
+    let dy = [p1[1] - p0[1], p2[1] - p1[1]];
+    dx[0] * dy[1] > dx[1] * dy[0]
+}
+
+
+fn draw_line(frame: &mut [[u8; SCREEN_WIDTH]; SCREEN_HEIGHT], start: [f32; 2], end: [f32; 2]) {
+    let [x0, y0] = start;
+    let [x1, y1] = end;
+    let [dx, dy] = [x1 - x0, y1 - y0];
+    if dy.abs() > dx.abs() {
+        let ymin = y0.min(y1);
+        let ymax = y0.max(y1);
+        let iymin = ymin.ceil() as usize;
+        let iymax = ymax.ceil() as usize;
+        let dxdy = dx / dy;
+        for iy in iymin..iymax {
+            let ix = ((iy as f32 - y0) * dxdy + x0) as usize;
+            frame[iy][ix] = b'|';
+        }
+    } else {
+        let xmin = x0.min(x1);
+        let xmax = x0.max(x1);
+        let ixmin = xmin.ceil() as usize;
+        let ixmax = xmax.ceil() as usize;
+        let dydx = dy / dx;
+        for ix in ixmin..ixmax {
+            let iy = ((ix as f32 - x0) * dydx + y0) as usize;
+            frame[iy][ix] = b'-';
+        }
+    }
 }
